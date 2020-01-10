@@ -125,22 +125,43 @@ function response(
     let element = doc.attr("data-score");
     return element;
   };
-
+  if (msg === ".스트레스") {
+    replier.reply("발전의 계기!");
+  }
   if (msg === ".도움말") {
     replier.reply(
       "등록된 명령어\n[.그룹생성], [.인원추가 n],\n[.명단작성 이름 : git닉네임],\n[.인증]\n\n상세 명령어\n[.인원추가 2]\n[.명단추가 홍길동 : hgd123, 변사또 : bsd234]\n[.그룹삭제]" +
         "\n명단 추가는 한번에 해주세요."
     );
-  } else if (msg === ".테스트") {
-    let temp = ".테스트";
-    replier.reply(typeof date);
+  } else if (msg.indexOf(".테스트") === 0) {
     let test = Utils.parse("https://ghchart.rshah.org/INT31302").select(
-      "rect[data-date=" + date + "]"
+      "rect[data-date*=2019-" + msg.split(" ").reverse()[0] + "]"
     );
     let test2 = test.toString();
-    let test3 = test2.substring(test2.indexOf("data-score"));
-    replier.reply(test);
-    replier.reply(test3);
+    let checkcount = test2.match(/>/g).length;
+    var myArray = [];
+    var myArray2 = [];
+    var testcnt = 0;
+    for (let i = 0; i < checkcount; i++) {
+      myArray[i] = test2.substring(0, test2.indexOf(">") + 1);
+      test2 = test2.substring(test2.indexOf(">") + 1).trim();
+      let date = myArray[i].split(" ")[3];
+      let cnt = myArray[i].split(" ")[2];
+      if (cnt === 'data-score="0"') {
+        myArray2[testcnt] = date.substring(11, 21);
+        testcnt++;
+      }
+    }
+    myArray2.sort(function(a, b) {
+      let dateA = a.split("-")[2];
+      let dateB = b.split("-")[2];
+      return dateA > dateB ? 1 : -1;
+    });
+    var str = sender + "님이 커밋 안한 날짜";
+    for (let i = 0; i < testcnt; i++) {
+      str += "\n" + myArray2[i];
+    }
+    replier.reply(str);
     preChat = null;
   } else if (msg === ".그룹생성") {
     if (!isExist) {
