@@ -36,18 +36,20 @@ function addPeople(room, msg) {
 }
 
 function createList(room, msg, count, str) {
-  temp = ".명단작성";
-  let word = msg.substring(temp.length + 1);
+  let word = msg.substring(msg.split(" ")[0].length).trim();
+  word = word.replace(/ : /gi, ":");
+  word = word.replace(/:/gi, " : ");
   let temp_word = word.substring(0, word.indexOf(","));
-  word = word.substring(word.indexOf(",") + 2);
-  for (i = 0; i < count(room); i++) {
+  word = word.substring(word.indexOf(",") + 1).trim();
+  const max = count(room);
+  for (i = 0; i < max; i++) {
     str = str.replace("인원 " + i + " : ", temp_word);
     if (temp_word != "null") {
       temp_word = word.substring(0, word.indexOf(","));
       if (word.indexOf(",") === -1) {
         temp_word = word;
       } else {
-        word = word.substring(word.indexOf(",") + 2);
+        word = word.substring(word.indexOf(",") + 1).trim();
       }
     }
   }
@@ -59,15 +61,17 @@ function checkCommit(date, room, Doc, str, count) {
   let result = date + "일자\n" + room + " 그룹 커밋 수\n";
   let name;
   let id;
-  let word = str.substring(str.indexOf(count(room)) + 2);
-  for (i = 0; i < count(room); i++) {
+  const max = count(room);
+  str = DataBase.getDataBase(room);
+  let word = str.substring(str.indexOf(max) + 1).trim();
+  for (let i = 0; i < max; i++) {
     let temp_word = word.substring(0, word.indexOf("\n"));
-    if (word.indexOf("\n") == -1) {
-      name = word.substring(0, word.indexOf(" :"));
-      id = word.substring(word.indexOf(" : ") + 3);
+    if (temp_word == "") {
+      name = word.substring(0, word.indexOf(":")).trim();
+      id = word.substring(word.indexOf(":") + 1).trim();
     } else {
-      name = temp_word.substring(0, temp_word.indexOf(" :"));
-      id = temp_word.substring(temp_word.indexOf(" : ") + 3);
+      name = temp_word.substring(0, temp_word.indexOf(":")).trim();
+      id = temp_word.substring(temp_word.indexOf(":") + 1).trim();
     }
     result =
       result + name + " : " + Doc("https://ghchart.rshah.org/" + id) + "\n";
@@ -160,8 +164,8 @@ function response(
   let str = DataBase.getDataBase(room);
 
   const count = function(room) {
-    const findIndex = str.indexOf(cnt);
-    return str.substring(findIndex + cnt.length, findIndex + cnt.length + 1);
+    temp = str.split(":")[2];
+    return Number(temp.substring(0, temp.indexOf("\n")).trim());
   };
   const checkManager = function(room) {
     if (isExist) {
@@ -190,14 +194,6 @@ function response(
         "\n명단 추가는 한번에 해주세요.\n[.기간체크 이름 달]"
     );
   } else if (msg.indexOf(".테스트") === 0) {
-    const data = DataBase.getDataBase(room);
-    const context = data
-      .substring(data.indexOf(msg.split(" ")[1]))
-      .split("\n")[0];
-    const name = context.split(":")[0].trim();
-    const id = context.split(":")[1].trim();
-    replier.reply(name);
-    replier.reply(id);
     preChat = null;
   } else if (msg === ".그룹생성") {
     if (!isExist) {
