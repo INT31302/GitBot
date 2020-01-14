@@ -169,13 +169,8 @@ function response(
   };
   const checkManager = function(room) {
     if (isExist) {
-      const findIndex = str.indexOf(root);
-      const lastIndex = str.indexOf(cnt);
-      if (lastIndex != -1) {
-        return str.substring(findIndex + root.length, lastIndex - 1);
-      } else {
-        return str.substring(findIndex + root.length);
-      }
+      const temp = str.split(":")[1];
+      return temp.substring(0, temp.indexOf("\n")).trim();
     } else {
       return null;
     }
@@ -194,6 +189,11 @@ function response(
         "\n명단 추가는 한번에 해주세요.\n[.기간체크 이름 달]"
     );
   } else if (msg.indexOf(".테스트") === 0) {
+    // replier.reply(
+    //   Utils.parse(
+    //     "https://github.com/INT31302/TypeChain/blob/master/README.md"
+    //   ).select("article p")
+    // );
     preChat = null;
   } else if (msg === ".그룹생성") {
     if (!isExist) {
