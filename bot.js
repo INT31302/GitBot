@@ -1,6 +1,7 @@
 const scriptName = "GitBot";
-const root = "관리자 : ";
-const cnt = "인원 수 : ";
+const root_str = "관리자 : ";
+const cnt_str = "인원 수 : ";
+const token_str = "Token : ";
 let preChat = null;
 Date.prototype.yyyymmdd = function() {
   let yyyy = this.getFullYear().toString();
@@ -11,8 +12,64 @@ Date.prototype.yyyymmdd = function() {
   );
 };
 
+function isExist(room) {
+  return Boolean(DataBase.getDataBase(room) + "" !== "null");
+}
+
+function checkManager(str, sender) {
+  let manager = str.substring(str.indexOf(root_str)).split(":")[1];
+  manager = manager.substring(0, manager.indexOf("\n")).trim();
+  return Boolean(manager === sender);
+}
+
+function getManager(getRoom) {
+  let manager = DataBase.getDataBase(getRoom);
+  manager = manager.substring(manager.indexOf(root_str)).split(":")[1];
+  manager = manager.substring(0, manager.indexOf("\n")).trim();
+  return manager;
+}
+
+function getToken(getRoom) {
+  let temp = DataBase.getDataBase(getRoom);
+  if (temp !== null) {
+    temp = temp.substring(temp.indexOf(token_str)).split(":")[1];
+    temp = temp.substring(0, temp.indexOf("\n")).trim();
+    return temp;
+  } else {
+    Api.replyRoom("등록되지 않은 그룹입니다.");
+  }
+}
+
+function setToken(getRoom, sender, lastToken) {
+  const newToken = createToken();
+  let result = DataBase.getDataBase(getRoom);
+  reulst = result.replace(getManager(getRoom), sender);
+  result = result.replace(lastToken, newToken);
+  DataBase.setDataBase(getRoom, result);
+  if (
+    checkManager(DataBase.getDataBase(getRoom), sender) &&
+    getToken(getRoom) === newToken
+  ) {
+    return true;
+  } else {
+    return false;
+  }
+}
+function createToken() {
+  let array = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXTZabcdefghiklmnopqrstuvwxyz";
+  let result = "";
+  for (let i = 0; i < 8; i++) {
+    let rnum = Math.floor(Math.random() * array.length);
+    result += array.substring(rnum, rnum + 1);
+  }
+  return result;
+}
+
 function createGroup(room, sender) {
-  DataBase.appendDataBase(room, root + sender);
+  DataBase.appendDataBase(
+    room,
+    root_str + sender + "\n" + token_str + createToken()
+  );
   return true;
 }
 
@@ -21,11 +78,9 @@ function removeGroup(room) {
 }
 
 function addPeople(room, msg) {
-  let temp = ".인원추가";
-  let num = msg.substring(msg.indexOf(temp) + temp.length + 1);
-  num = Number(num);
+  let num = msg.match(/:/g).length;
   if (!isNaN(num)) {
-    DataBase.appendDataBase(room, "\n" + cnt + num);
+    DataBase.appendDataBase(room, "\n" + cnt_str + num);
     for (let i = 0; i < num; i++) {
       DataBase.appendDataBase(room, "\n인원 " + i + " : ");
     }
@@ -36,24 +91,25 @@ function addPeople(room, msg) {
 }
 
 function createList(room, msg, count, str) {
-  let word = msg.substring(msg.split(" ")[0].length).trim();
+  let word = msg.substring(msg.split(" ")[0].length).trim(); // '.명단작성' 이후 msg
   word = word.replace(/ : /gi, ":");
-  word = word.replace(/:/gi, " : ");
-  let temp_word = word.substring(0, word.indexOf(","));
-  word = word.substring(word.indexOf(",") + 1).trim();
-  const max = count(room);
+  word = word.replace(/:/gi, " : "); // : 공백 통일화 작업
+  let temp_word = word.substring(0, word.indexOf(",")); // ',' 단위로 한명 끊음
+  word = word.substring(word.indexOf(",") + 1).trim(); // temp_word 이후 문장으로 저장
+  const max = count; // 저장된 인원수 받아옴
   for (i = 0; i < max; i++) {
     str = str.replace("인원 " + i + " : ", temp_word);
     if (temp_word != "null") {
       temp_word = word.substring(0, word.indexOf(","));
       if (word.indexOf(",") === -1) {
+        // 마지막 사람일 경우
         temp_word = word;
       } else {
         word = word.substring(word.indexOf(",") + 1).trim();
       }
     }
   }
-  DataBase.setDataBase(room, str);
+  DataBase.setDataBase(room, str.trim());
   return true;
 }
 
@@ -85,16 +141,13 @@ function checkDate(msg, room) {
   let results = null;
   if (!isNaN(month)) {
     if (month >= 1 && month <= 12) {
-      if (month < 10) {
-        month = "0" + month.toString();
-      } else {
-        month = month.toString();
-      }
+      month = month < 10 ? "0" + month.toString() : month.toString();
     } else {
       return (results = "0");
     }
     const data = DataBase.getDataBase(room);
     if (data.indexOf(msg.split(" ")[1]) != -1) {
+      // '.기간체크' 다음 msg
       const context = data
         .substring(data.indexOf(msg.split(" ")[1]))
         .split("\n")[0];
@@ -154,105 +207,151 @@ function response(
    *(string) packageName
    */
 
-  if (preChat === msg) return;
-  preChat = msg;
+  if (msg.indexOf(".") === 0) {
+    if (preChat === msg) return;
+    preChat = msg;
 
-  const isExist = Boolean(DataBase.getDataBase(room) + "" !== "null");
+    let date = new Date().yyyymmdd();
 
-  let date = new Date().yyyymmdd();
+    let str = DataBase.getDataBase(room);
 
-  let str = DataBase.getDataBase(room);
-
-  const count = function(room) {
-    temp = str.split(":")[2];
-    return Number(temp.substring(0, temp.indexOf("\n")).trim());
-  };
-  const checkManager = function(room) {
-    if (isExist) {
-      const temp = str.split(":")[1];
-      return temp.substring(0, temp.indexOf("\n")).trim();
-    } else {
-      return null;
+    let count = function(room) {
+      let temp = str.substring(str.indexOf(cnt_str)).split(":")[1];
+      return Number(temp.substring(0, temp.indexOf("\n")).trim());
+    };
+    const Doc = function(url) {
+      let doc = Utils.parse(url).select("rect[data-date=" + date + "]");
+      let element = doc.attr("data-score");
+      return element;
+    };
+    if (msg === ".스트레스") {
+      replier.reply("발전의 계기!");
     }
-  };
-  const Doc = function(url) {
-    let doc = Utils.parse(url).select("rect[data-date=" + date + "]");
-    let element = doc.attr("data-score");
-    return element;
-  };
-  if (msg === ".스트레스") {
-    replier.reply("발전의 계기!");
-  }
-  if (msg === ".도움말") {
-    replier.reply(
-      "등록된 명령어\n[.그룹생성], [.인원추가 n],\n[.명단작성 이름 : git닉네임],\n[.인증]\n\n상세 명령어\n[.인원추가 2]\n[.명단추가 홍길동 : hgd123, 변사또 : bsd234]\n[.그룹삭제]" +
-        "\n명단 추가는 한번에 해주세요.\n[.기간체크 이름 달]"
-    );
-  } else if (msg.indexOf(".테스트") === 0) {
-    // replier.reply(
-    //   Utils.parse(
-    //     "https://github.com/INT31302/TypeChain/blob/master/README.md"
-    //   ).select("article p")
-    // );
-    preChat = null;
-  } else if (msg === ".그룹생성") {
-    if (!isExist) {
-      if (createGroup(room, sender))
-        replier.reply(room + " 그룹을(를) 생성하였습니다.");
-    } else {
-      replier.reply("이미 그룹을 생성하였습니다.");
+    if (msg === ".도움말") {
+      replier.reply(
+        "등록된 명령어\n[.그룹생성],\n[.명단작성 이름 : git닉네임],\n[.인증]\n\n상세 명령어\n[.명단추가 홍길동 : hgd123, 변사또 : bsd234]\n명단 추가는 한번에 해주세요." +
+          "\n[.그룹삭제]\n[.기간체크 이름 달]\n[.관리자인계 그룹명]\n [.관리자인수 그룹명, 토큰값]"
+      );
+    } else if (msg.indexOf(".테스트") === 0) {
+      replier.reply(createToken());
+      preChat = null;
     }
-  } else if (msg.indexOf(".인원추가") === 0) {
-    if (checkManager(room) !== sender) {
-      replier.reply("관리자가 아닙니다.");
-    } else {
-      if (!isExist) {
-        replier.reply("그룹 생성을 먼저 해주세요.");
+
+    if (msg.indexOf(".관리자인계") === 0) {
+      if (!isGroupChat) {
+        let getRoom = msg.substring(String(".관리자인계").length).trim();
+        if (checkManager(DataBase.getDataBase(getRoom), sender)) {
+          let result =
+            "Token : " +
+            getToken(getRoom) +
+            +"\n인계할 관리자에게\n토큰을 전달해주세요!";
+          replier.reply(result);
+        } else {
+          replier.reply("관리자가 아닙니다.");
+        }
       } else {
-        if (addPeople(room, msg))
-          replier.reply("그룹 인원 수가 추가되었습니다.");
-        else replier.reply("숫자를 입력해주시기 바랍니다.");
+        replier.reply("개인채팅 기능입니다.");
       }
+      return;
     }
-  } else if (msg.indexOf(".명단작성") === 0) {
-    if (checkManager(room) !== sender) {
-      replier.reply("관리자가 아닙니다.");
-    } else {
-      if (createList(room, msg, count, str)) {
-        replier.reply("명단 작성을 완료하였습니다.");
-        replier.reply(DataBase.getDataBase(room));
-      }
-    }
-  } else if (msg === ".그룹삭제") {
-    if (isExist) {
-      if (sender === checkManager(room)) {
-        removeGroup(room);
-        replier.reply(room + " 그룹을 삭제하였습니다.");
+    if (msg.indexOf(".관리자인수") === 0) {
+      if (!isGroupChat) {
+        let getRoom;
+        const lastToken;
+        try{
+          getRoom = msg
+          .substring(String(".관리자인수").length)
+          .split(",")[0]
+          .trim();
+
+          lastToken = msg
+          .substring(String(".관리자인수").length)
+          .split(",")[1]
+          .trim();
+        }catch(e){
+          replier.reply("양식에 맞추어 입력해주시기 바랍니다.");
+        }
+        if (lastToken === getToken(getRoom)) {
+          setToken(getRoom, sender, lastToken)
+            ? replier.reply("관리자가 인계되었습니다!")
+            : replier.reply("오류! 관리자가 인계되지 않았습니다.");
+        }
       } else {
-        replier.reply("관리자가 아닙니다!");
+        replier.reply("개인채팅 기능입니다.");
+      }
+      return;
+    }
+
+    if (msg === ".그룹생성") {
+      if (!isExist(room)) {
+        if (createGroup(room, sender))
+          replier.reply(room + " 그룹을(를) 생성하였습니다.");
+      } else {
+        replier.reply("이미 그룹을 생성하였습니다.");
+      }
+      return;
+    }
+
+    if (isExist(room)) {
+      try {
+        if (msg === ".인증") {
+          replier.reply("잠시만 기다려주세요!");
+          let result = checkCommit(date, room, Doc, str, count);
+          replier.reply(result.trim());
+          preChat = null;
+          return;
+        }
+
+        if (msg.indexOf(".기간체크") === 0) {
+          replier.reply("잠시만 기다려주세요!");
+          let result = checkDate(msg, room);
+          switch (result) {
+            case "0":
+              replier.reply("올바른 달을 입력해주세요.");
+              break;
+            case "1":
+              replier.reply("등록되지 않은 이름입니다,");
+              break;
+            default:
+              replier.reply(result);
+              break;
+          }
+          preChat = null;
+          return;
+        }
+      } catch (e) {
+        replier.reply("명단작성을 먼저 해주시기 바랍니다.");
+        return;
+      }
+
+      if (checkManager(str, sender)) {
+        if (msg.indexOf(".명단작성") === 0) {
+          addPeople(room, msg);
+          str = DataBase.getDataBase(room);
+          if (createList(room, msg, count(room), str)) {
+            replier.reply("명단 작성을 완료하였습니다.");
+            let result = DataBase.getDataBase(room);
+            let result1 = result.substring(0, result.indexOf(token_str) - 1);
+            let result2 = result
+              .substring(result.indexOf(token_str))
+              .split("\n")[0];
+            result2 = result.substring(
+              result.indexOf(result2) + result2.length
+            );
+            result = result1 + result2;
+            replier.reply(result);
+          }
+          return;
+        } else if (msg === ".그룹삭제") {
+          removeGroup(room);
+          replier.reply(room + " 그룹을 삭제하였습니다.");
+          return;
+        }
+      } else {
+        replier.reply("관리자가 아닙니다.");
       }
     } else {
-      replier.reply("그룹생성을 먼저해주세요!");
+      replier.reply("그룹 생성을 먼저 해주세요.");
     }
-  } else if (msg === ".인증") {
-    replier.reply("잠시만 기다려주세요!");
-    let result = checkCommit(date, room, Doc, str, count);
-    replier.reply(result.trim());
-    preChat = null;
-  } else if (msg.indexOf(".기간체크") === 0) {
-    replier.reply("잠시만 기다려주세요!");
-    let result = checkDate(msg, room);
-    switch (result) {
-      case "0":
-        replier.reply("올바른 달을 입력해주세요.");
-        break;
-      case "1":
-        replier.reply("등록되지 않은 이름입니다,");
-        break;
-      default:
-        replier.reply(result);
-        break;
-    }
-    preChat = null;
   }
 }
