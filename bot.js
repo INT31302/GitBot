@@ -31,19 +31,15 @@ function getManager(getRoom) {
 
 function getToken(getRoom) {
   let temp = DataBase.getDataBase(getRoom);
-  if (temp !== null) {
-    temp = temp.substring(temp.indexOf(token_str)).split(":")[1];
-    temp = temp.substring(0, temp.indexOf("\n")).trim();
-    return temp;
-  } else {
-    Api.replyRoom("등록되지 않은 그룹입니다.");
-  }
+  temp = temp.substring(temp.indexOf(token_str)).split(":")[1];
+  temp = temp.substring(0, temp.indexOf("\n")).trim();
+  return temp;
 }
 
 function setToken(getRoom, sender, lastToken) {
   const newToken = createToken();
   let result = DataBase.getDataBase(getRoom);
-  reulst = result.replace(getManager(getRoom), sender);
+  result = result.replace(getManager(getRoom), sender);
   result = result.replace(lastToken, newToken);
   DataBase.setDataBase(getRoom, result);
   if (
@@ -148,8 +144,10 @@ function checkDate(msg, room) {
     const data = DataBase.getDataBase(room);
     if (data.indexOf(msg.split(" ")[1]) != -1) {
       // '.기간체크' 다음 msg
-      const context = data
-        .substring(data.indexOf(msg.split(" ")[1]))
+      let context = data.substring(data.indexOf(cnt_str));
+      context = context.substring(context.indexOf("\n") + 1);
+      context = context
+        .substring(context.indexOf(msg.split(":")[1]))
         .split("\n")[0];
       const name = context.split(":")[0].trim();
       const id = context.split(":")[1].trim();
@@ -229,25 +227,27 @@ function response(
     }
     if (msg === ".도움말") {
       replier.reply(
-        "등록된 명령어\n[.그룹생성],\n[.명단작성 이름 : git닉네임],\n[.인증]\n\n상세 명령어\n[.명단추가 홍길동 : hgd123, 변사또 : bsd234]\n명단 추가는 한번에 해주세요." +
-          "\n[.그룹삭제]\n[.기간체크 이름 달]\n[.관리자인계 그룹명]\n [.관리자인수 그룹명, 토큰값]"
+        "등록된 명령어\n[.그룹생성],\n[.명단작성 이름 : git닉네임],\n[.인증]\n[.관리자인계 그룹명]\n[.관리자인수 그룹명, 토큰값]\n\n상세 명령어\n[.명단추가 홍길동 : hgd123, 변사또 : bsd234]\n명단 추가는 한번에 해주세요." +
+          "\n[.그룹삭제]\n[.기간체크 이름 달]\n[.관리자인계 깃방]\n[.관리자인수 깃방, a1b2c3d4]\n\n버그 및 오류 문의 : tkdwo287"
       );
     } else if (msg.indexOf(".테스트") === 0) {
-      replier.reply(createToken());
       preChat = null;
     }
 
     if (msg.indexOf(".관리자인계") === 0) {
       if (!isGroupChat) {
         let getRoom = msg.substring(String(".관리자인계").length).trim();
-        if (checkManager(DataBase.getDataBase(getRoom), sender)) {
-          let result =
-            "Token : " +
-            getToken(getRoom) +
-            +"\n인계할 관리자에게\n토큰을 전달해주세요!";
-          replier.reply(result);
+        if (isExist(getRoom)) {
+          if (checkManager(DataBase.getDataBase(getRoom), sender)) {
+            let result = getToken(getRoom);
+            replier.reply(
+              "Token : " + result + "\n인계할 관리자에게\n토큰을 전달해주세요!"
+            );
+          } else {
+            replier.reply("관리자가 아닙니다.");
+          }
         } else {
-          replier.reply("관리자가 아닙니다.");
+          replier.reply("등록되지 않은 그룹입니다.");
         }
       } else {
         replier.reply("개인채팅 기능입니다.");
@@ -257,24 +257,28 @@ function response(
     if (msg.indexOf(".관리자인수") === 0) {
       if (!isGroupChat) {
         let getRoom;
-        const lastToken;
-        try{
+        let lastToken;
+        try {
           getRoom = msg
-          .substring(String(".관리자인수").length)
-          .split(",")[0]
-          .trim();
+            .substring(String(".관리자인수").length)
+            .split(",")[0]
+            .trim();
 
           lastToken = msg
-          .substring(String(".관리자인수").length)
-          .split(",")[1]
-          .trim();
-        }catch(e){
+            .substring(String(".관리자인수").length)
+            .split(",")[1]
+            .trim();
+        } catch (e) {
           replier.reply("양식에 맞추어 입력해주시기 바랍니다.");
         }
-        if (lastToken === getToken(getRoom)) {
-          setToken(getRoom, sender, lastToken)
-            ? replier.reply("관리자가 인계되었습니다!")
-            : replier.reply("오류! 관리자가 인계되지 않았습니다.");
+        if (isExist(getRoom)) {
+          if (lastToken === getToken(getRoom)) {
+            setToken(getRoom, sender, lastToken)
+              ? replier.reply("관리자가 인계되었습니다!")
+              : replier.reply("오류! 관리자가 인계되지 않았습니다.");
+          }
+        } else {
+          replier.reply("등록되지 않은 그룹입니다.");
         }
       } else {
         replier.reply("개인채팅 기능입니다.");
@@ -320,7 +324,10 @@ function response(
           return;
         }
       } catch (e) {
-        replier.reply("명단작성을 먼저 해주시기 바랍니다.");
+        replier.reply(
+          "예상치 못한 오류가 발생하였습니다.\n오류 내용 제보 바랍니다."
+        );
+        replier.reply(e);
         return;
       }
 
