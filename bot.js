@@ -115,7 +115,8 @@ function checkCommit(date, room, Doc, str, count) {
   let id;
   const max = count(room);
   str = DataBase.getDataBase(room);
-  let word = str.substring(str.indexOf(max) + 1).trim();
+  let index = str.indexOf(cnt_str) + String(cnt_str + max).length;
+  let word = str.substring(index).trim();
   for (let i = 0; i < max; i++) {
     let temp_word = word.substring(0, word.indexOf("\n"));
     if (temp_word == "") {
@@ -125,8 +126,18 @@ function checkCommit(date, room, Doc, str, count) {
       name = temp_word.substring(0, temp_word.indexOf(":")).trim();
       id = temp_word.substring(temp_word.indexOf(":") + 1).trim();
     }
-    result =
-      result + name + " : " + Doc("https://ghchart.rshah.org/" + id) + "\n";
+    result += name + " : ";
+    switch (Doc("https://ghchart.rshah.org/" + id)) {
+      case "wrong id":
+        result += "잘못된 ID입니다.\n";
+        break;
+      case "api not update":
+        result = "Api가 업데이트되지 않았습니다.";
+        return result;
+      default:
+        result += Doc("https://ghchart.rshah.org/" + id) + "\n";
+        break;
+    }
     word = word.substring(word.indexOf("\n") + 1);
   }
   return result;
@@ -218,10 +229,20 @@ function response(
       return Number(temp.substring(0, temp.indexOf("\n")).trim());
     };
     const Doc = function(url) {
-      let doc = Utils.parse(url).select("rect[data-date=" + date + "]");
+      let doc;
+      try {
+        doc = Utils.parse(url);
+      } catch (e) {
+        return "wrong id";
+      }
+      doc = doc.select("rect[data-date=" + date + "]");
+      if (doc.toString() === "") {
+        return "api not update";
+      }
       let element = doc.attr("data-score");
       return element;
     };
+
     if (msg === ".스트레스") {
       replier.reply("발전의 계기!");
     }
@@ -231,6 +252,7 @@ function response(
           "\n[.그룹삭제]\n[.기간체크 이름 달]\n[.관리자인계 깃방]\n[.관리자인수 깃방, a1b2c3d4]\n\n버그 및 오류 문의 : tkdwo287"
       );
     } else if (msg.indexOf(".테스트") === 0) {
+      replier.reply(checkCommit("2020-01-18", room, Doc, str, count));
       preChat = null;
     }
 
