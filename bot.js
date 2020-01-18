@@ -216,7 +216,11 @@ function response(
    *(string) packageName
    */
 
-  if (msg.indexOf(".") === 0) {
+  if (
+    msg.indexOf("_") === 0 &&
+    msg.length !== 1 &&
+    msg.match(/_/g).length === 1
+  ) {
     if (preChat === msg) return;
     preChat = msg;
 
@@ -243,22 +247,22 @@ function response(
       return element;
     };
 
-    if (msg === ".스트레스") {
+    if (msg === "_스트레스") {
       replier.reply("발전의 계기!");
     }
-    if (msg === ".도움말") {
+    if (msg === "_도움말") {
       replier.reply(
-        "등록된 명령어\n[.그룹생성],\n[.명단작성 이름 : git닉네임],\n[.인증]\n[.관리자인계 그룹명]\n[.관리자인수 그룹명, 토큰값]\n\n상세 명령어\n[.명단추가 홍길동 : hgd123, 변사또 : bsd234]\n명단 추가는 한번에 해주세요." +
-          "\n[.그룹삭제]\n[.기간체크 이름 달]\n[.관리자인계 깃방]\n[.관리자인수 깃방, a1b2c3d4]\n\n버그 및 오류 문의 : tkdwo287"
+        "등록된 명령어\n[_그룹생성],\n[_명단작성 이름 : git닉네임],\n[_인증]\n[_관리자인계 그룹명]\n[_관리자인수 그룹명, 토큰값]\n\n상세 명령어\n[_명단추가 홍길동 : hgd123, 변사또 : bsd234]\n명단 추가는 한번에 해주세요." +
+          "\n[_그룹삭제]\n[_기간체크 이름 달]\n[_관리자인계 깃방]\n[_관리자인수 깃방, a1b2c3d4]\n\n버그 및 오류 문의 : tkdwo287"
       );
-    } else if (msg.indexOf(".테스트") === 0) {
+    } else if (msg.indexOf("_테스트") === 0) {
       replier.reply(checkCommit("2020-01-18", room, Doc, str, count));
       preChat = null;
     }
 
-    if (msg.indexOf(".관리자인계") === 0) {
+    if (msg.indexOf("_관리자인계") === 0) {
       if (!isGroupChat) {
-        let getRoom = msg.substring(String(".관리자인계").length).trim();
+        let getRoom = msg.substring(String("_관리자인계").length).trim();
         if (isExist(getRoom)) {
           if (checkManager(DataBase.getDataBase(getRoom), sender)) {
             let result = getToken(getRoom);
@@ -276,18 +280,18 @@ function response(
       }
       return;
     }
-    if (msg.indexOf(".관리자인수") === 0) {
+    if (msg.indexOf("_관리자인수") === 0) {
       if (!isGroupChat) {
         let getRoom;
         let lastToken;
         try {
           getRoom = msg
-            .substring(String(".관리자인수").length)
+            .substring(String("_관리자인수").length)
             .split(",")[0]
             .trim();
 
           lastToken = msg
-            .substring(String(".관리자인수").length)
+            .substring(String("_관리자인수").length)
             .split(",")[1]
             .trim();
         } catch (e) {
@@ -308,7 +312,7 @@ function response(
       return;
     }
 
-    if (msg === ".그룹생성") {
+    if (msg === "_그룹생성") {
       if (!isExist(room)) {
         if (createGroup(room, sender))
           replier.reply(room + " 그룹을(를) 생성하였습니다.");
@@ -320,7 +324,7 @@ function response(
 
     if (isExist(room)) {
       try {
-        if (msg === ".인증") {
+        if (msg === "_인증") {
           replier.reply("잠시만 기다려주세요!");
           let result = checkCommit(date, room, Doc, str, count);
           replier.reply(result.trim());
@@ -328,7 +332,7 @@ function response(
           return;
         }
 
-        if (msg.indexOf(".기간체크") === 0) {
+        if (msg.indexOf("_기간체크") === 0) {
           replier.reply("잠시만 기다려주세요!");
           let result = checkDate(msg, room);
           switch (result) {
@@ -345,6 +349,14 @@ function response(
           preChat = null;
           return;
         }
+
+        if (msg === "_명단보기") {
+          let result = str;
+          result = str.substring(str.indexOf(cnt_str));
+          result = result.substring(result.indexOf("\n") + 1);
+          replier.reply(result);
+          return;
+        }
       } catch (e) {
         replier.reply(
           "예상치 못한 오류가 발생하였습니다.\n오류 내용 제보 바랍니다."
@@ -354,7 +366,7 @@ function response(
       }
 
       if (checkManager(str, sender)) {
-        if (msg.indexOf(".명단작성") === 0) {
+        if (msg.indexOf("_명단작성") === 0) {
           addPeople(room, msg);
           str = DataBase.getDataBase(room);
           if (createList(room, msg, count(room), str)) {
@@ -371,7 +383,7 @@ function response(
             replier.reply(result);
           }
           return;
-        } else if (msg === ".그룹삭제") {
+        } else if (msg === "_그룹삭제") {
           removeGroup(room);
           replier.reply(room + " 그룹을 삭제하였습니다.");
           return;
