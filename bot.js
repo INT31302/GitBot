@@ -91,17 +91,21 @@ function createList(room, msg, count, str) {
   word = word.replace(/ : /gi, ":");
   word = word.replace(/:/gi, " : "); // : 공백 통일화 작업
   let temp_word = word.substring(0, word.indexOf(",")); // ',' 단위로 한명 끊음
-  word = word.substring(word.indexOf(",") + 1).trim(); // temp_word 이후 문장으로 저장
-  const max = count; // 저장된 인원수 받아옴
-  for (i = 0; i < max; i++) {
-    str = str.replace("인원 " + i + " : ", temp_word);
-    if (temp_word != "null") {
-      temp_word = word.substring(0, word.indexOf(","));
-      if (word.indexOf(",") === -1) {
-        // 마지막 사람일 경우
-        temp_word = word;
-      } else {
-        word = word.substring(word.indexOf(",") + 1).trim();
+  if (word.indexOf(",") == -1) {
+    str = str.replace("인원 " + i + " : ", word);
+  } else {
+    word = word.substring(word.indexOf(",") + 1).trim(); // temp_word 이후 문장으로 저장
+    const max = count; // 저장된 인원수 받아옴
+    for (i = 0; i < max; i++) {
+      str = str.replace("인원 " + i + " : ", temp_word);
+      if (temp_word != "null") {
+        temp_word = word.substring(0, word.indexOf(","));
+        if (word.indexOf(",") === -1) {
+          // 마지막 사람일 경우
+          temp_word = word;
+        } else {
+          word = word.substring(word.indexOf(",") + 1).trim();
+        }
       }
     }
   }
@@ -117,15 +121,9 @@ function checkCommit(date, room, Doc, str, count) {
   str = DataBase.getDataBase(room);
   let index = str.indexOf(cnt_str) + String(cnt_str + max).length;
   let word = str.substring(index).trim();
-  for (let i = 0; i < max; i++) {
-    let temp_word = word.substring(0, word.indexOf("\n"));
-    if (temp_word == "") {
-      name = word.substring(0, word.indexOf(":")).trim();
-      id = word.substring(word.indexOf(":") + 1).trim();
-    } else {
-      name = temp_word.substring(0, temp_word.indexOf(":")).trim();
-      id = temp_word.substring(temp_word.indexOf(":") + 1).trim();
-    }
+  if (word.indexOf("\n") === -1) {
+    name = word.substring(0, word.indexOf(":")).trim();
+    id = word.substring(word.indexOf(":") + 1).trim();
     result += name + " : ";
     switch (Doc("https://ghchart.rshah.org/" + id)) {
       case "wrong id":
@@ -138,7 +136,30 @@ function checkCommit(date, room, Doc, str, count) {
         result += Doc("https://ghchart.rshah.org/" + id) + "\n";
         break;
     }
-    word = word.substring(word.indexOf("\n") + 1);
+  } else {
+    for (let i = 0; i < max; i++) {
+      let temp_word = word.substring(0, word.indexOf("\n"));
+      if (temp_word == "") {
+        name = word.substring(0, word.indexOf(":")).trim();
+        id = word.substring(word.indexOf(":") + 1).trim();
+      } else {
+        name = temp_word.substring(0, temp_word.indexOf(":")).trim();
+        id = temp_word.substring(temp_word.indexOf(":") + 1).trim();
+      }
+      result += name + " : ";
+      switch (Doc("https://ghchart.rshah.org/" + id)) {
+        case "wrong id":
+          result += "잘못된 ID입니다.\n";
+          break;
+        case "api not update":
+          result = "Api가 업데이트되지 않았습니다.";
+          return result;
+        default:
+          result += Doc("https://ghchart.rshah.org/" + id) + "\n";
+          break;
+      }
+      word = word.substring(word.indexOf("\n") + 1);
+    }
   }
   return result;
 }
