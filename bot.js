@@ -179,7 +179,7 @@ function checkDate(msg, room) {
       let context = data.substring(data.indexOf(cnt_str));
       context = context.substring(context.indexOf("\n") + 1);
       context = context
-        .substring(context.indexOf(msg.split(":")[1]))
+        .substring(context.indexOf(msg.split(" ")[1]))
         .split("\n")[0];
       const name = context.split(":")[0].trim();
       const id = context.split(":")[1].trim();
